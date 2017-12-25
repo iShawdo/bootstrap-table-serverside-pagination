@@ -1,0 +1,164 @@
+﻿@{
+    ViewBag.Title = "Bootstrap Table Example";
+}
+
+<label Id="lblCantidadSeleccionados"></label> 
+<button Id="btnMostrarSeleccionados" class="btn btn-default pull-right"> Mostrar Seleccionados </button>
+<br /><br />
+<table Id="table"></table>
+
+@section scripts {
+    <script type="text/javascript">
+        $(function () {
+            // utilizado para mantener en memoria los registros seleccionados, incluso si el servidor no me devolvio estos datos
+            var seleccionados = [];
+
+            $table = $('#table');
+            $table.bootstrapTable({
+                columns: getColumns(),
+                pagination: true,
+                sidePagination: 'server',
+                url: '@Url.Action("GetData","Home")'
+            });
+
+            // inicializamos
+            actualizaCantidadSelecciones(seleccionados.length);
+
+            $('#btnMostrarSeleccionados').on('click', function () {
+                var mensaje = '';
+                if (seleccionados.length > 0) {
+                    mensaje = 'Registros Seleccionados: \n';
+                    for (var i = 0; i < seleccionados.length; i++) {
+                        mensaje += '- ' + seleccionados[i].Name + '\n';
+                    }
+                } else {
+                    mensaje = 'No hay registros seleccionados';
+                }
+
+                alert( mensaje );
+            });
+
+            // Este método se ejecuta al darle check a una fila de la tabla
+            $table.on("check.bs.table", function (event, row) {
+                // Si el arreglo esta vacío hacemos push directo
+                if (seleccionados.length === 0) {
+                    seleccionados.push(row);
+                } else {
+                    // Validamos que no se encuentre dentro de nuestro arreglo de selecciones
+                    var registroRepetido = false;
+                    for (var i = 0; i < seleccionados.length; i++) {
+                        // comparamos por nuestro identificador
+                        if (seleccionados[i].Id === row.Id) {
+                            registroRepetido = true;
+                            break;
+                        }
+                    }
+                    // si no está repetido lo agregamos a nuestro arreglo de selecciones
+                    if (!registroRepetido) {
+                        seleccionados.push(row);
+                    }
+                }
+                // actualizamos la cantidad de registros seleccionados según nuestro arreglo actualizado
+                actualizaCantidadSelecciones(seleccionados.length);
+            });
+
+            // Este método se ejecuta al desmarcar una fila de la tabla
+            $table.on("uncheck.bs.table", function (event, row) {
+                // validamos solo si el largo de nuestro arreglo es mayor a cero
+                if (seleccionados.length > 0) {
+                    // recorremos el arreglo en caso de tener registros
+                    for (var i = 0; i < seleccionados.length; i++) {
+                        // verificamos que el row exista dentro del arreglo
+                        if (seleccionados[i].Id === row.Id) {
+                            // lo eliminamos de nuestro arreglo
+                            seleccionados.splice(i, 1);
+                            break;
+                        }
+                    }
+                }
+                // actualizamos la cantidad de registros seleccionados según nuestro arreglo actualizado
+                actualizaCantidadSelecciones(seleccionados.length);
+            });
+
+            // Este método se ejecuta al darle al checkbox del header de nuestra tabla
+            $table.on("check-all.bs.table", function (event) {
+                // obtenemos los rows seleccionados de la pagina actual.
+                var rowsSeleccionadas = $table.bootstrapTable('getAllSelections');
+
+                // validamos que tengamos items en nuestro arreglo global.
+                if (seleccionados.length > 0) {
+                    $.each(rowsSeleccionadas, function (index, item) {
+                        // agregamos solo los que no estén repetidos.
+                        var registroRepetido = false;
+                        for (var i = 0; i < seleccionados.length; i++) {
+                            if (seleccionados[i].Id === item.Id) {
+                                registroRepetido = true;
+                                break;
+                            }
+                        }
+                        // si no está repetido lo agregamos
+                        if (!registroRepetido) {
+                            seleccionados.push(item);
+                        }
+                    });
+                } else {
+                    // si no tenemos items en seleccionados, asignamos el objeto completo.
+                    seleccionados = $table.bootstrapTable('getAllSelections');
+                }
+                // actualizamos la cantidad de registros seleccionados según nuestro arreglo actualizado
+                actualizaCantidadSelecciones(seleccionados.length);
+            });
+
+            // Este método se ejecuta al desmarcar el checkbox del header de nuestra tabla
+            $table.on("uncheck-all.bs.table", function (event) {
+                // obtenemos los rows "seleccionados" de la pagina actual.
+                var rowsSeleccionadas = $table.bootstrapTable('getData');
+                $.each(rowsSeleccionadas, function (index, item) {
+                    // recorremos los rows seleccionados de nuestro arreglo global
+                    for (var i = 0; i < seleccionados.length; i++) {
+                        // si encontramos el row dentro del arreglo global, lo eliminamos
+                        if (seleccionados[i].Id === item.Id) {
+                            seleccionados.splice(i, 1);
+                            // detenemos el for interno para continuar con el siguiente row del foreach
+                            break;
+                        }
+                    }
+                });
+                // actualizamos la cantidad de registros seleccionados según nuestro arreglo actualizado
+                actualizaCantidadSelecciones(seleccionados.length);
+            });
+
+            $table.on("load-success.bs.table", function (event) {
+                // si tengo selecciones, les pongo el check
+                if (seleccionados.length > 0) {
+                    // generamos un arreglo de Id's para poner los check
+                    var selecciones = [];
+                    $.each(seleccionados, function (index, item) {
+                        selecciones.push(item.Id);
+                    });
+
+                    $table.bootstrapTable('checkBy', { field: 'Id', values: selecciones });
+                }
+            });
+
+            function actualizaCantidadSelecciones(cantidad) {
+                $('#lblCantidadSeleccionados').text("Registros Seleccionados: " + cantidad);
+            }
+
+            function getColumns() {
+                return [{
+                    checkbox: true
+                }, {
+                    field: 'Id',
+                    title: 'ID'
+                }, {
+                    field: 'Name',
+                    title: 'Nombre'
+                }, {
+                    field: 'Price',
+                    title: 'Precio'
+                }];
+            }
+        });
+    </script>
+}
